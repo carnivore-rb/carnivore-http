@@ -20,6 +20,16 @@ module Carnivore
         }.merge(args)
       end
 
+      def transmit(message, orignal_message_or_connection, args={})
+        if(original_message_or_connection.is_a?(Message))
+          con = original_message_or_connection[:connection]
+        else
+          con = original_message_or_connection[:connection]
+        end
+        # TODO: add `args` options for marshaling: json/xml/etc
+        con.respond(args[:code] || :ok, message)
+      end
+
       def process(*process_args)
         srv = Reel::Server.supervise(args[:bind], args[:port]) do |con|
           while(req = con.request)
