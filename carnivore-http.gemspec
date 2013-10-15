@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.homepage = 'https://github.com/heavywater/carnivore-http'
   s.description = 'Carnivore HTTP source'
   s.require_path = 'lib'
-  s.add_dependency 'carnivore'
+  s.add_dependency 'carnivore', '>= 0.1.8'
   s.add_dependency 'reel'
   s.add_dependency 'blockenspiel'
   s.files = Dir['**/*']
