@@ -68,7 +68,7 @@ module Carnivore
         if(match)
           if(static[type][match][:async])
             Celluloid::Actor[callback_name(match, type)].async.execute(msg)
-            false
+            true
           else
             Celluloid::Actor[callback_name(match, type)].execute(msg)
             true
@@ -87,7 +87,7 @@ module Carnivore
         if(match && !match.empty?)
           if(regex[type][match.first][:async])
             Celluloid::Actor[callback_name(match.first, type)].async.execute(*([msg] + match.last))
-            false
+            true
           else
             Celluloid::Actor[callback_name(match.first, type)].execute(*([msg] + match.last))
             true

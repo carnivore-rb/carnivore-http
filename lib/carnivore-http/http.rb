@@ -28,7 +28,7 @@ module Carnivore
         orig = extra.detect{|x| x.is_a?(Carnivore::Message)}
         con = options[:connection]
         if(orig && con.nil?)
-          con = orig[:connection]
+          con = orig[:message][:connection]
         end
         if(con) # response
           payload = message.is_a?(String) ? message : MultiJson.dump(message)
