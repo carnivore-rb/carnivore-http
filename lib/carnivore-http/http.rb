@@ -49,6 +49,12 @@ module Carnivore
         end
       end
 
+      def confirm(message, args={})
+        message[:message][:connection].respond(
+          args[:code] || :ok, args[:response_body]
+        )
+      end
+
       def process(*process_args)
         srv = Reel::Server.supervise(args[:bind], args[:port]) do |con|
           while(req = con.request)
