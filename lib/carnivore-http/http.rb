@@ -50,6 +50,7 @@ module Carnivore
       end
 
       def confirm(message, args={})
+        debug "Confirming #{message} with: #{args.inspect}"
         message[:message][:connection].respond(
           args[:code] || :ok, args[:response_body]
         )
