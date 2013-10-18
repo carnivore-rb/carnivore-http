@@ -9,6 +9,7 @@ module Carnivore
     class Endpoint
 
       include Celluloid
+      include Carnivore::Utils::Params
       include Carnivore::Utils::Logging
 
       attr_reader :endpoint, :type
@@ -16,7 +17,7 @@ module Carnivore
       def initialize(type, endpoint, block)
         @endpoint = endpoint
         @type = type
-        define_singleton_method(:run, &block)
+        define_singleton_method(:execute, &block)
       end
 
       def to_s
@@ -66,10 +67,10 @@ module Carnivore
         end
         if(match)
           if(static[type][match][:async])
-            Celluloid::Actor[callback_name(match, type)].async.run(msg)
+            Celluloid::Actor[callback_name(match, type)].async.execute(msg)
             false
           else
-            Celluloid::Actor[callback_name(match, type)].run(msg)
+            Celluloid::Actor[callback_name(match, type)].execute(msg)
             true
           end
         end
@@ -83,12 +84,12 @@ module Carnivore
             [point, res.first.is_a?(Array) ? res.first : []]
           end
         end.compact.first
-        unless(match.empty?)
+        if(match && !match.empty?)
           if(regex[type][match.first][:async])
-            Celluloid::Actor[callback_name(match.first, type)].async.run([msg] + match.last)
+            Celluloid::Actor[callback_name(match.first, type)].async.execute(*([msg] + match.last))
             false
           else
-            Celluloid::Actor[callback_name(match.first, type)].run([msg] + match.last)
+            Celluloid::Actor[callback_name(match.first, type)].execute(*([msg] + match.last))
             true
           end
         end
