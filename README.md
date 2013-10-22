@@ -31,6 +31,6 @@ end.start!
 ```
 
 # Info
-* Carnivore: https://github.com/heavywater/carnivore
-* Repository: https://github.com/heavywater/carnivore-http
-* IRC: Freenode @ #heavywater
+* Carnivore: https://github.com/carnivore-rb/carnivore
+* Repository: https://github.com/carnivore-rb/carnivore-http
+* IRC: Freenode @ #carnivore
