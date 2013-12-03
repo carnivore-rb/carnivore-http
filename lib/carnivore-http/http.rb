@@ -1,10 +1,13 @@
 require 'reel'
 require 'carnivore/source'
+require 'carnivore-http/utils'
 
 module Carnivore
   class Source
 
     class Http < Source
+
+      include Carnivore::Http::Utils::Params
 
       attr_reader :args
 
@@ -64,7 +67,12 @@ module Carnivore
         srv = Reel::Server.supervise(args[:bind], args[:port]) do |con|
           while(req = con.request)
             begin
-              msg = format(:request => req, :body => req.body.to_s, :connection => con)
+              msg = format(
+                :request => req,
+                :body => req.body.to_s,
+                :connection => con,
+                :query => parse_query_string(req.query_string)
+              )
               callbacks.each do |name|
                 c_name = callback_name(name)
                 debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
