@@ -1,3 +1,4 @@
+require 'http'
 require 'minitest/autorun'
 require 'carnivore-http'
 
@@ -51,7 +52,13 @@ describe 'Carnivore::Source::Http' do
       it 'should receive messages' do
         Celluloid::Actor[:http_source].transmit('test message 2')
         source_wait
-        MessageStore.messages.must_include 'test message 2'
+        MessageStore.messages.pop.must_equal 'test message 2'
+      end
+
+      it 'should accept http requests' do
+        HTTP.get('http://127.0.0.1:8705/')
+        source_wait
+        MessageStore.messages.pop.wont_be_nil
       end
     end
   end
