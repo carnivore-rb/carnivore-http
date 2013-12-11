@@ -56,6 +56,10 @@ module Carnivore
         set_points
       end
 
+      def connect
+        async.process
+      end
+
       def process(*process_args)
         srv = Reel::Server.supervise(args[:bind], args[:port]) do |con|
           con.each_request do |req|
