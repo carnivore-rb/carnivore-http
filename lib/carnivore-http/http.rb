@@ -76,7 +76,7 @@ module Carnivore
               callbacks.each do |name|
                 c_name = callback_name(name)
                 debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
-                Celluloid::Actor[c_name].async.call(msg)
+                callback_supervisor[c_name].async.call(msg)
               end
               con.respond(:ok, 'So long, and thanks for all the fish!') if args[:auto_respond]
             rescue => e
