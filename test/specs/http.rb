@@ -17,7 +17,7 @@ describe 'Carnivore::Source::Http' do
       )
       t = Thread.new{ Carnivore.start! }
       source_wait
-      Celluloid::Actor[:http_source].wont_be_nil
+      Celluloid::Supervisor.supervisor[:http_source].wont_be_nil
       t.terminate
     end
 
@@ -46,11 +46,11 @@ describe 'Carnivore::Source::Http' do
 
     describe 'message transmissions' do
       it 'should accept message transmits' do
-        Celluloid::Actor[:http_source].transmit('test message')
+        Carnivore::Supervisor.supervisor[:http_source].transmit('test message')
       end
 
       it 'should receive messages' do
-        Celluloid::Actor[:http_source].transmit('test message 2')
+        Carnivore::Supervisor.supervisor[:http_source].transmit('test message 2')
         source_wait
         MessageStore.messages.pop.must_equal 'test message 2'
       end

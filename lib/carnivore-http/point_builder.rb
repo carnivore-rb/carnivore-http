@@ -34,7 +34,7 @@ module Carnivore
     include Celluloid::Logger
     include Blockenspiel::DSL
 
-    attr_reader :static, :regex, :only, :except
+    attr_reader :static, :regex, :only, :except, :endpoint_supervisor
 
     def initialize(args)
       @only = args[:only]
@@ -42,7 +42,7 @@ module Carnivore
       @static = {}
       @regex = {}
       @callback_names = {}
-      @endpoint_supervisor = Celluloid::SupervisionGroup.run!
+      @endpoint_supervisor = Carnivore::Supervisor.create!.last
       load_endpoints!
     end
 
@@ -67,10 +67,10 @@ module Carnivore
         end
         if(match)
           if(static[type][match][:async])
-            Celluloid::Actor[callback_name(match, type)].async.execute(msg)
+            endpoint_supervisor[callback_name(match, type)].async.execute(msg)
             true
           else
-            Celluloid::Actor[callback_name(match, type)].execute(msg)
+            endpoint_supervisor[callback_name(match, type)].execute(msg)
             true
           end
         end
@@ -86,10 +86,10 @@ module Carnivore
         end.compact.first
         if(match && !match.empty?)
           if(regex[type][match.first][:async])
-            Celluloid::Actor[callback_name(match.first, type)].async.execute(*([msg] + match.last))
+            endpoint_supervisor[callback_name(match.first, type)].async.execute(*([msg] + match.last))
             true
           else
-            Celluloid::Actor[callback_name(match.first, type)].execute(*([msg] + match.last))
+            endpoint_supervisor[callback_name(match.first, type)].execute(*([msg] + match.last))
             true
           end
         end
@@ -114,12 +114,12 @@ module Carnivore
         static[request_type][regexp_or_string.sub(%r{/$}, '')] = args
       end
       if(args[:workers] && args[:workers].to_i > 1)
-        @endpoint_supervisor.pool(Endpoint,
+        endpoint_supervisor.pool(Endpoint,
           as: callback_name(regexp_or_string, request_type), size: args[:workers.to_i],
           args: [request_type, regexp_or_string, block]
         )
       else
-        @endpoint_supervisor.supervise_as(
+        endpoint_supervisor.supervise_as(
           callback_name(regexp_or_string, request_type), Endpoint, request_type, regexp_or_string, block
         )
       end
