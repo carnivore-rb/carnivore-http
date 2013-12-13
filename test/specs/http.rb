@@ -17,7 +17,7 @@ describe 'Carnivore::Source::Http' do
       )
       t = Thread.new{ Carnivore.start! }
       source_wait
-      Celluloid::Supervisor.supervisor[:http_source].wont_be_nil
+      Carnivore::Supervisor.supervisor[:http_source].wont_be_nil
       t.terminate
     end
 
