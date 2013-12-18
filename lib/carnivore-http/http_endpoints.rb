@@ -68,7 +68,7 @@ module Carnivore
                 :request => req,
                 :body => req.body.to_s,
                 :connection => con,
-                :query => parse_query_string(req.query_string)
+                :query => parse_query_string(req.query_string).merge(parse_query_string(req.body.to_s))
               )
               unless(@points.deliver(msg))
                 con.respond(:ok, 'So long, and thanks for all the fish!')
