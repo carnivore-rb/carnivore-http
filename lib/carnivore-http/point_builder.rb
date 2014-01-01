@@ -115,7 +115,7 @@ module Carnivore
       end
       if(args[:workers] && args[:workers].to_i > 1)
         endpoint_supervisor.pool(Endpoint,
-          as: callback_name(regexp_or_string, request_type), size: args[:workers.to_i],
+          as: callback_name(regexp_or_string, request_type), size: args[:workers].to_i,
           args: [request_type, regexp_or_string, block]
         )
       else
