@@ -63,7 +63,7 @@ module Carnivore
     def static_points(msg, type, path)
       if(static[type])
         match = static[type].keys.detect do |point|
-          path.sub(%r{/$}, '') == point
+          !path.scan(/^#{Regexp.escape(point)}\/?(\?|$)/).empty?
         end
         if(match)
           if(static[type][match][:async])
@@ -80,8 +80,10 @@ module Carnivore
     def regex_points(msg, type, path)
       if(regex[type])
         match = regex[type].keys.map do |point|
-          unless((res = path.scan(/^#{point}$/)).empty?)
-            [point, res.first.is_a?(Array) ? res.first : []]
+          unless((res = path.scan(/^(#{point})(\?|$)/)).empty?)
+            res = res.first
+            res.pop # remove empty EOS match
+            [point, res]
           end
         end.compact.first
         if(match && !match.empty?)
