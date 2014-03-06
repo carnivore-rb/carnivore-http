@@ -17,7 +17,17 @@ module Carnivore
       def initialize(type, endpoint, block)
         @endpoint = endpoint
         @type = type
-        define_singleton_method(:execute, &block)
+        define_singleton_method(:wrapped_execute, &block)
+      end
+
+      def execute(*args)
+        begin
+          wrapped_execute(*args)
+        rescue => e
+          error "Unexpected error encountered! #{e.class}: #{e}"
+          debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
+          abort e
+        end
       end
 
       def to_s
