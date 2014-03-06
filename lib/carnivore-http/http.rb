@@ -53,14 +53,10 @@ module Carnivore
       end
 
       def confirm(message, args={})
-        if(args[:response_body] || args[:code])
-          debug "Confirming #{message} with: #{args.inspect}"
-          message[:message][:connection].respond(
-            args[:code] || :ok, args[:response_body] || 'Thanks!'
-          )
-        else
-          debug "Confirming #{message}. No arguments provided so no response taken."
-        end
+        code = args.delete(:code) || :ok
+        args[:response_body] = 'Thanks' if code == :ok && args.empty?
+        debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect}"
+        message[:message][:connection].respond(code, args[:response_body] || args)
       end
 
       def process(*process_args)
