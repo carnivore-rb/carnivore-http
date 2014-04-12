@@ -155,10 +155,7 @@ module Carnivore
 
     class << self
       def define(&block)
-        name = File.basename(
-          caller.first.match(%r{.*?:}).to_s.sub(':', '')
-        ).sub('.rb', '')
-        store(name, block)
+        store(Celluloid.uuid, block)
       end
 
       def store(name, block)
