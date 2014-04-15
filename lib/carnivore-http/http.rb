@@ -65,6 +65,7 @@ module Carnivore
             begin
               msg = format(
                 :request => req,
+                :headers => req.headers.to_h,
                 :body => req.body.to_s,
                 :connection => con,
                 :query => parse_query_string(req.query_string)
