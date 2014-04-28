@@ -68,7 +68,7 @@ module Carnivore
                 :headers => req.headers.to_h,
                 :body => req.body.to_s,
                 :connection => con,
-                :query => parse_query_string(req.query_string)
+                :query => parse_query_string(req.query_string).merge(parse_query_string(req.body.to_s))
               )
               callbacks.each do |name|
                 c_name = callback_name(name)
