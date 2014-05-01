@@ -61,7 +61,7 @@ module Carnivore
       end
 
       def process(*process_args)
-        srv = Reel::Server.supervise(args[:bind], args[:port]) do |con|
+        srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
           con.each_request do |req|
             begin
               msg = format(
@@ -72,12 +72,12 @@ module Carnivore
                 :query => parse_query_string(req.query_string).merge(parse_query_string(req.body.to_s))
               )
               unless(@points.deliver(msg))
-                con.respond(:ok, 'So long, and thanks for all the fish!')
+                req.respond(:ok, 'So long, and thanks for all the fish!')
               end
             rescue => e
               error "Failed to process message: #{e.class} - #{e}"
               debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
-              con.respond(:bad_request, 'Failed to process request')
+              req.respond(:bad_request, 'Failed to process request')
             end
           end
         end

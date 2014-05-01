@@ -56,16 +56,16 @@ module Carnivore
         code = args.delete(:code) || :ok
         args[:response_body] = 'Thanks' if code == :ok && args.empty?
         debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect}"
-        message[:message][:connection].respond(code, args[:response_body] || args)
+        message[:message][:request].respond(code, args[:response_body] || args)
       end
 
       def process(*process_args)
-        srv = Reel::Server.supervise(args[:bind], args[:port]) do |con|
-          while(req = con.request)
+        srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
+          con.each_request do |req|
             begin
               msg = format(
                 :request => req,
-                :headers => req.headers.to_h,
+                :headers => req.headers,
                 :body => req.body.to_s,
                 :connection => con,
                 :query => parse_query_string(req.query_string).merge(parse_query_string(req.body.to_s))
@@ -73,11 +73,11 @@ module Carnivore
               callbacks.each do |name|
                 c_name = callback_name(name)
                 debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
-                callback_supervisor[c_name].async.call(msg)
+                callback_supervisor[c_name].call(msg)
               end
-              con.respond(:ok, 'So long, and thanks for all the fish!') if args[:auto_respond]
+              req.respond(:ok, 'So long, and thanks for all the fish!') if args[:auto_respond]
             rescue => e
-              con.respond(:bad_request, 'Failed to process request')
+              req.respond(:bad_request, "Failed to process request -> #{e}")
             end
           end
         end
