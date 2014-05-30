@@ -5,6 +5,7 @@ require 'carnivore-http/utils'
 module Carnivore
   class Source
 
+    # Carnivore HTTP source
     class Http < Source
 
       include Carnivore::Http::Utils::Params

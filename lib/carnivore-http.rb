@@ -8,7 +8,7 @@ module Carnivore
     autoload :PointBuilder, 'carnivore-http/point_builder'
   end
 
-  module Source
+  class Source
     autoload :Http, 'carnivore-http/http'
     autoload :HttpEndpoints, 'carnivore-http/http_endpoints'
   end
