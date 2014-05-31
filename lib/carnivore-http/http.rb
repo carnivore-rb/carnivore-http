@@ -17,11 +17,11 @@ module Carnivore
       end
 
       def default_args(args)
-        {
+        Smash.new(
           :bind => '0.0.0.0',
           :port => '3000',
           :auto_respond => true
-        }.merge(args)
+        ).merge(args)
       end
 
       # Transmit can be one of two things:
