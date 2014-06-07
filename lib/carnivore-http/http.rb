@@ -1,4 +1,5 @@
 require 'reel'
+require 'tempfile'
 require 'carnivore/source'
 require 'carnivore-http/utils'
 
@@ -10,13 +11,22 @@ module Carnivore
 
       include Carnivore::Http::Utils::Params
 
+      # @return [Hash] source arguments
       attr_reader :args
 
+      # Setup the source
+      #
+      # @params args [Hash] setup arguments
       def setup(args={})
         @args = default_args(args)
       end
 
-      def default_args(args)
+      # Default configuration arguments. If hash is provided, it
+      # will be merged into the default arguments.
+      #
+      # @param args [Hash]
+      # @return [Hash]
+      def default_args(args={})
         Smash.new(
           :bind => '0.0.0.0',
           :port => '3000',
@@ -24,9 +34,12 @@ module Carnivore
         ).merge(args)
       end
 
-      # Transmit can be one of two things:
-      # 1. Response back to an open connection
-      # 2. Request to a remote source
+      # Tranmit message. The transmission can be a response
+      # back to an open connection, or a request to a remote
+      # source (remote carnivore-http source generally)
+      #
+      # @param message [Object] message to transmit
+      # @param extras [Object] argument list
       def transmit(message, *extra)
         options = extra.detect{|x| x.is_a?(Hash)} || {}
         orig = extra.detect{|x| x.is_a?(Carnivore::Message)}
@@ -53,6 +66,11 @@ module Carnivore
         end
       end
 
+      # Confirm processing of message
+      #
+      # @param message [Carnivore::Message]
+      # @param args [Hash]
+      # @option args [Symbol] :code return code
       def confirm(message, args={})
         code = args.delete(:code) || :ok
         args[:response_body] = 'Thanks' if code == :ok && args.empty?
@@ -60,17 +78,12 @@ module Carnivore
         message[:message][:request].respond(code, args[:response_body] || args)
       end
 
+      # Process requests
       def process(*process_args)
         srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
           con.each_request do |req|
             begin
-              msg = format(
-                :request => req,
-                :headers => req.headers,
-                :body => req.body.to_s,
-                :connection => con,
-                :query => parse_query_string(req.query_string).merge(parse_query_string(req.body.to_s))
-              )
+              msg = build_message(req)
               callbacks.each do |name|
                 c_name = callback_name(name)
                 debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
@@ -82,6 +95,42 @@ module Carnivore
             end
           end
         end
+      end
+
+      # Size limit for inline body
+      BODY_TO_FILE_SIZE = 1024 * 10 # 10K
+
+      # Build message hash from request
+      #
+      # @param req [Reel::Request]
+      # @return [Hash]
+      # @note
+      #   if body size is greater than BODY_TO_FILE_SIZE
+      #   the body will be a temp file instead of a string
+      def build_message(req)
+        msg = format(
+          :request => req,
+          :headers => req.headers,
+          :connection => con,
+          :query => parse_query_string(req.query_string)
+        )
+        if(req.headers['Content-Type'] == 'application/json')
+          msg[:query].merge(
+            parase_query_string(
+              req.body.to_s
+            )
+          )
+          msg[:body] = req.body.to_s
+        elsif(req.headers['Content-Length'].to_i > BODY_TO_FILE_SIZE)
+          msg[:body] = Tempfile.new('carnivore-http')
+          while((chunk = req.body.readpartial(2048)))
+            msg[:body] << chunk
+          end
+          msg[:body].rewind
+        else
+          msg[:body] = req.body.to_s
+        end
+        msg
       end
 
     end
