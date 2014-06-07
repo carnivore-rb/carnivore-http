@@ -3,10 +3,17 @@ require 'carnivore-http/point_builder'
 
 module Carnivore
   class Source
+
+    # Carnivore HTTP end points source
     class HttpEndpoints < Http
 
       class << self
 
+        # Register endpoint
+        #
+        # @param args [Hash]
+        # @option args [String] :name
+        # @option args [String] :base_path
         def register(args={})
           args = Hash[*(
               args.map do |k,v|
@@ -21,10 +28,15 @@ module Carnivore
           self
         end
 
+        # @return [Hash] point builders registered
         def builders
           @point_builders ||= {}
         end
 
+        # Load the named builder
+        #
+        # @param name [String] name of builder
+        # @return [self]
         def load_builder(name)
           if(builders[name.to_sym])
             require File.join(builders[name.to_sym], name)
@@ -34,6 +46,9 @@ module Carnivore
           self
         end
 
+        # Setup the builders
+        #
+        # @return [TrueClass]
         def setup!
           only = Carnivore::Config.get(:http_endpoints, :only)
           except = Carnivore::Config.get(:http_endpoints, :except)
@@ -48,29 +63,30 @@ module Carnivore
 
       end
 
+      # @return [Hash] point builders
       attr_reader :points
 
+      # Setup the registered endpoints
+      #
+      # @param args [Hash]
+      # @option args [String, Symbol] :config_key
       def setup(args={})
         super
         @conf_key = (args[:config_key] || :http_endpoints).to_sym
         set_points
       end
 
+      # Start processing
       def connect
         async.process
       end
 
+      # Process requests
       def process(*process_args)
         srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
           con.each_request do |req|
             begin
-              msg = format(
-                :request => req,
-                :headers => req.headers,
-                :body => req.body.to_s,
-                :connection => con,
-                :query => parse_query_string(req.query_string).merge(parse_query_string(req.body.to_s))
-              )
+              msg = build_message(req)
               unless(@points.deliver(msg))
                 req.respond(:ok, 'So long, and thanks for all the fish!')
               end
@@ -83,6 +99,9 @@ module Carnivore
         end
       end
 
+      # Build the endpoints and set
+      #
+      # @return [self]
       def set_points
         @points = PointBuilder.new(
           :only => Carnivore::Config.get(@conf_key, :only),
