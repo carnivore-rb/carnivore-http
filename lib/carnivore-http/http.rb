@@ -83,7 +83,7 @@ module Carnivore
         srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
           con.each_request do |req|
             begin
-              msg = build_message(req)
+              msg = build_message(con, req)
               callbacks.each do |name|
                 c_name = callback_name(name)
                 debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
@@ -102,13 +102,14 @@ module Carnivore
 
       # Build message hash from request
       #
+      # @param con [Reel::Connection]
       # @param req [Reel::Request]
       # @return [Hash]
       # @note
       #   if body size is greater than BODY_TO_FILE_SIZE
       #   the body will be a temp file instead of a string
-      def build_message(req)
-        msg = format(
+      def build_message(con, req)
+        msg = Smash.new(
           :request => req,
           :headers => req.headers,
           :connection => con,
@@ -130,7 +131,7 @@ module Carnivore
         else
           msg[:body] = req.body.to_s
         end
-        msg
+        format(msg)
       end
 
     end

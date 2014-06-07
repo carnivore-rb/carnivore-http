@@ -86,7 +86,7 @@ module Carnivore
         srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
           con.each_request do |req|
             begin
-              msg = build_message(req)
+              msg = build_message(con, req)
               unless(@points.deliver(msg))
                 req.respond(:ok, 'So long, and thanks for all the fish!')
               end
