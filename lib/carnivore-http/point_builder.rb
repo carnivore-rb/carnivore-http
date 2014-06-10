@@ -210,13 +210,7 @@ module Carnivore
       #
       # @note will register all discoverable subclasses
       def load_endpoints!
-        if(self.class == PointBuilder)
-          self.class.descendants.map(&:new).each do |builder|
-            static.merge!(builder.static)
-            regex.merge!(builder.regex)
-          end
-        end
-        self.class.storage.each do |name, block|
+        compress_offspring.each do |name, block|
           next if only && !only.include?(name.to_s)
           next if except && except.include?(name.to_s)
           Blockenspiel.invoke(block, self)
@@ -260,6 +254,20 @@ module Carnivore
         def descendants
           @descendants ||= []
         end
+
+        # @return [Array<Hash>] all descendant storages (full tree)
+        def offspring_storage
+          descendants.map(&:offspring_storage).flatten.unshift(storage)
+        end
+
+        # @return [Hash] merged storages (full tree)
+        def compress_offspring
+          stores = offspring_storage
+          stores.inject(stores.shift) do |memo, store|
+            memo.merge(store)
+          end
+        end
+
       end
     end
   end
