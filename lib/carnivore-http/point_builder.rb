@@ -210,7 +210,7 @@ module Carnivore
       #
       # @note will register all discoverable subclasses
       def load_endpoints!
-        compress_offspring.each do |name, block|
+        self.class.compress_offspring.each do |name, block|
           next if only && !only.include?(name.to_s)
           next if except && except.include?(name.to_s)
           Blockenspiel.invoke(block, self)
