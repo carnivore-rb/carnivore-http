@@ -1,3 +1,8 @@
+# v0.1.6
+* Add support for point builder subclassing
+* DRY out message generation to be consistent between http and endpoint
+* Set max size on body and store in temp file if > max size
+
 # v0.1.4
 * Include custom `connect` to start source
 * Pull query from body if found
