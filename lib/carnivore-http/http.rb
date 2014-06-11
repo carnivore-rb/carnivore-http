@@ -117,7 +117,7 @@ module Carnivore
         )
         if(req.headers['Content-Type'] == 'application/json')
           msg[:query].merge(
-            parase_query_string(
+            parse_query_string(
               req.body.to_s
             )
           )
