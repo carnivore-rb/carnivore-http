@@ -226,7 +226,6 @@ module Carnivore
         # @param klass [Class]
         def inherited(klass)
           descendants.push(klass)
-          klass.send(:include, Blockenspiel::DSL)
         end
 
         # Define new API block
