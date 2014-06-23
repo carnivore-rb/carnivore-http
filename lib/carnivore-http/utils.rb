@@ -49,7 +49,7 @@ module Carnivore
               new_args[k] = format_query_type(v)
             end
           end
-          new_args
+          new_args.to_smash
         end
 
         # Best attempt to convert to true type
