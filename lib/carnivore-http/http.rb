@@ -116,12 +116,13 @@ module Carnivore
           :query => parse_query_string(req.query_string)
         )
         if(req.headers['Content-Type'] == 'application/json')
-          msg[:query].merge(
-            parse_query_string(
-              req.body.to_s
-            )
+          msg[:body] = MultiJson.load(
+            req.body.to_s
           )
-          msg[:body] = req.body.to_s
+        elsif(req.headers['Content-Type'] == 'application/x-www-form-urlencoded')
+          msg[:body] = parse_query_string(
+            req.body.to_s
+          )
         elsif(req.headers['Content-Length'].to_i > BODY_TO_FILE_SIZE)
           msg[:body] = Tempfile.new('carnivore-http')
           while((chunk = req.body.readpartial(2048)))
