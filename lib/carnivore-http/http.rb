@@ -111,19 +111,21 @@ module Carnivore
       def build_message(con, req)
         msg = Smash.new(
           :request => req,
-          :headers => req.headers,
+          :headers => Smash[
+            req.headers.map{ |k,v| [k.downcase.tr('-', '_'), v]}
+          ],
           :connection => con,
           :query => parse_query_string(req.query_string)
         )
-        if(req.headers['Content-Type'] == 'application/json')
+        if(msg[:headers][:content_type] == 'application/json')
           msg[:body] = MultiJson.load(
             req.body.to_s
           )
-        elsif(req.headers['Content-Type'] == 'application/x-www-form-urlencoded')
+        elsif(msg[:headers][:content_type] == 'application/x-www-form-urlencoded')
           msg[:body] = parse_query_string(
             req.body.to_s
           )
-        elsif(req.headers['Content-Length'].to_i > BODY_TO_FILE_SIZE)
+        elsif(msg[:headers][:content_length].to_i > BODY_TO_FILE_SIZE)
           msg[:body] = Tempfile.new('carnivore-http')
           while((chunk = req.body.readpartial(2048)))
             msg[:body] << chunk

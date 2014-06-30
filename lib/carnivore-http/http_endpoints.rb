@@ -78,6 +78,7 @@ module Carnivore
 
       # Start processing
       def connect
+        info 'Override initialization process startup. Force enabling processing.'
         async.process
       end
 
@@ -88,6 +89,7 @@ module Carnivore
             begin
               msg = build_message(con, req)
               unless(@points.deliver(msg))
+                warn "No match found for request: #{msg}"
                 req.respond(:ok, 'So long, and thanks for all the fish!')
               end
             rescue => e
