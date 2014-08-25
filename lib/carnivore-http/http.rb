@@ -125,6 +125,9 @@ module Carnivore
           msg[:body] = parse_query_string(
             req.body.to_s
           )
+          if(msg[:body].size == 1 && msg[:body].values.first.is_a?(Array) && msg[:body].values.first.empty?)
+            msg[:body] = msg[:body].keys.first
+          end
         elsif(msg[:headers][:content_length].to_i > BODY_TO_FILE_SIZE)
           msg[:body] = Tempfile.new('carnivore-http')
           while((chunk = req.body.readpartial(2048)))
