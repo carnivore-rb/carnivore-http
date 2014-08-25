@@ -1,3 +1,7 @@
+# v0.1.8
+* Add better message body handling
+* Update DSL inclusion on subclasses
+
 # v0.1.6
 * Add support for point builder subclassing
 * DRY out message generation to be consistent between http and endpoint

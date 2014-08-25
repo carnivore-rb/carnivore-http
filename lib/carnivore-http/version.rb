@@ -1,9 +1,6 @@
 module Carnivore
   module Http
-    # Custom version class
-    class Version < Gem::Version
-    end
-    # Current library version
-    VERSION = Version.new('0.1.7')
+    # current library version
+    VERSION = Gem::Version.new('0.1.8')
   end
 end
