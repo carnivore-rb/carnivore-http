@@ -76,28 +76,33 @@ module Carnivore
         set_points
       end
 
-      # Start processing
-      def connect
-        info 'Override initialization process startup. Force enabling processing.'
-        async.process
+      # Always auto start
+      def auto_process?
+        true
       end
 
       # Process requests
       def process(*process_args)
-        srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
-          con.each_request do |req|
-            begin
-              msg = build_message(con, req)
-              unless(@points.deliver(msg))
-                warn "No match found for request: #{msg}"
-                req.respond(:ok, 'So long, and thanks for all the fish!')
+        unless(processing)
+          @processing = true
+          srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
+            con.each_request do |req|
+              begin
+                msg = build_message(con, req)
+                unless(@points.deliver(msg))
+                  warn "No match found for request: #{msg}"
+                  req.respond(:ok, 'So long, and thanks for all the fish!')
+                end
+              rescue => e
+                error "Failed to process message: #{e.class} - #{e}"
+                debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
+                req.respond(:bad_request, 'Failed to process request')
               end
-            rescue => e
-              error "Failed to process message: #{e.class} - #{e}"
-              debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
-              req.respond(:bad_request, 'Failed to process request')
             end
           end
+          true
+        else
+          false
         end
       end
 

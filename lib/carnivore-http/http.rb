@@ -34,6 +34,11 @@ module Carnivore
         ).merge(args)
       end
 
+      # Always auto start
+      def auto_process?
+        true
+      end
+
       # Tranmit message. The transmission can be a response
       # back to an open connection, or a request to a remote
       # source (remote carnivore-http source generally)
@@ -80,20 +85,26 @@ module Carnivore
 
       # Process requests
       def process(*process_args)
-        srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
-          con.each_request do |req|
-            begin
-              msg = build_message(con, req)
-              callbacks.each do |name|
-                c_name = callback_name(name)
-                debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
-                callback_supervisor[c_name].call(msg)
+        unless(@processing)
+          @processing = true
+          srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
+            con.each_request do |req|
+              begin
+                msg = build_message(con, req)
+                callbacks.each do |name|
+                  c_name = callback_name(name)
+                  debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
+                  callback_supervisor[c_name].call(msg)
+                end
+                req.respond(:ok, 'So long, and thanks for all the fish!') if args[:auto_respond]
+              rescue => e
+                req.respond(:bad_request, "Failed to process request -> #{e}")
               end
-              req.respond(:ok, 'So long, and thanks for all the fish!') if args[:auto_respond]
-            rescue => e
-              req.respond(:bad_request, "Failed to process request -> #{e}")
             end
           end
+          true
+        else
+          false
         end
       end
 
