@@ -6,6 +6,7 @@ module Carnivore
     class RetryDelivery
 
       include Celluloid
+      include Carnivore::Utils::Logging
 
       # @return [String] message directory
       attr_reader :message_directory
