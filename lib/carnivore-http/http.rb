@@ -25,6 +25,7 @@ module Carnivore
         require 'fileutils'
         @args = default_args(args)
         if(retry_directory)
+          info "Delivery retry has been enabled for this source (#{name})"
           @retry_delivery = Carnivore::Http::RetryDelivery.new(retry_directory)
           self.link retry_delivery
         end
@@ -48,7 +49,7 @@ module Carnivore
       # @return [String, NilClass] directory storing failed messages
       def retry_directory
         if(args[:retry_directory])
-          FileUtils.mkdir_p(args[:retry_directory])
+          FileUtils.mkdir_p(File.join(args[:retry_directory], name.to_s)).first
         end
       end
 
@@ -56,7 +57,7 @@ module Carnivore
       def retry_write_directory
         base = retry_directory
         if(base)
-          FileUtils.mkdir_p(File.join(base, '.write'))
+          FileUtils.mkdir_p(File.join(base, '.write')).first
         end
       end
 
