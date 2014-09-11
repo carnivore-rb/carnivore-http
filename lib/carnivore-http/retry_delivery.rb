@@ -77,7 +77,7 @@ module Carnivore
             true
           end
         rescue => e
-          error "Transmission redelivery failure (Message ID: #{message}) - #{e.class}: #{e}"
+          error "Transmission redelivery failure (Message ID: #{message_id}) - #{e.class}: #{e}"
           debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
           false
         end

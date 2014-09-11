@@ -97,7 +97,7 @@ module Carnivore
           payload = message.is_a?(String) ? message : MultiJson.dump(message)
           # TODO: add `options` options for marshaling: json/xml/etc
           code = options.fetch(:code, :ok)
-          info "Transmit response type for #{message} with code: #{code}"
+          info "Transmit response type with code: #{code}"
           con.respond(code, payload)
         else # request
           if(args[:endpoint])
@@ -115,15 +115,16 @@ module Carnivore
           method = options.fetch(:method,
             args.fetch(:method, :post)
           ).to_s.downcase.to_sym
+          message_id = message.is_a?(Hash) ? message.fetch(:id, 'NONE') : 'NONE'
           payload = message.is_a?(String) ? message : MultiJson.dump(message)
-          info "Transmit request type for message #{message}"
-          perform_transmission(message, payload, method, url, options.fetch(:headers, {}))
+          info "Transmit request type for Message ID: #{message_id}"
+          perform_transmission(message_id.to_s, payload, method, url, options.fetch(:headers, {}))
         end
       end
 
       # Transmit message to HTTP endpoint
       #
-      # @param message [Carnivore::Message]
+      # @param message_id [String]
       # @param payload [String] serialized payload
       # @param method [Symbol] HTTP method (:get, :post, etc)
       # @param url [String] endpoint URL
@@ -144,7 +145,7 @@ module Carnivore
         rescue => e
           error "Transmission failure (#{message}) - #{e.class}: #{e}"
           debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
-          write_for_retry(message.object_id, payload, method, url, headers)
+          write_for_retry(message, payload, method, url, headers)
         end
       end
 
@@ -165,8 +166,8 @@ module Carnivore
           :headers => headers
         }
         if(retry_directory)
-          stage_path = File.join(rewrite_retry_directory, "#{Celluloid.uuid}.json")
-          final_path = File.join(retry_directory, File.dirname(stage_path))
+          stage_path = File.join(retry_write_directory, "#{Celluloid.uuid}.json")
+          final_path = File.join(retry_directory, File.basename(stage_path))
           File.open(stage_path, 'w+') do |file|
             file.write MultiJson.dump(data)
           end
