@@ -6,6 +6,7 @@ module Carnivore
   # HTTP namespace
   module Http
     autoload :PointBuilder, 'carnivore-http/point_builder'
+    autoload :RetryDelivery, 'carnivore-http/retry_delivery'
   end
 
   class Source
