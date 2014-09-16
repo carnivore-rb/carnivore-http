@@ -13,5 +13,6 @@ Gem::Specification.new do |s|
   s.add_dependency 'carnivore', '>= 0.1.8'
   s.add_dependency 'reel', '~> 0.5.0'
   s.add_dependency 'blockenspiel'
+  s.add_dependency 'htauth'
   s.files = Dir['**/*']
 end

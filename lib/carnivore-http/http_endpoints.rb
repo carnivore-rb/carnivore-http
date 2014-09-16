@@ -89,9 +89,14 @@ module Carnivore
             con.each_request do |req|
               begin
                 msg = build_message(con, req)
-                unless(@points.deliver(msg))
-                  warn "No match found for request: #{msg}"
-                  req.respond(:ok, 'So long, and thanks for all the fish!')
+                if(authorized?(msg))
+                  unless(@points.deliver(msg))
+                    warn "No match found for request: #{msg}"
+                    debug "Unmatched message (#{msg}): #{msg.inspect}"
+                    req.respond(:not_found, 'So long, and thanks for all the fish!')
+                  end
+                else
+                  req.respond(:unauthorized, 'You are not authorized to perform requested action!')
                 end
               rescue => e
                 error "Failed to process message: #{e.class} - #{e}"

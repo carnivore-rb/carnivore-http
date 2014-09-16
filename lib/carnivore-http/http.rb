@@ -17,6 +17,10 @@ module Carnivore
       attr_reader :args
       # @return [Carnivore::Http::RetryDelivery]
       attr_reader :retry_delivery
+      # @return [Array<IPAddr>] allowed request origin addresses
+      attr_reader :auth_allowed_origins
+      # @return [WEBrick::HTTPAuth::Htpasswd]
+      attr_reader :auth_htpasswd
 
       # Setup the source
       #
@@ -28,6 +32,18 @@ module Carnivore
           info "Delivery retry has been enabled for this source (#{name})"
           @retry_delivery = Carnivore::Http::RetryDelivery.new(retry_directory)
           self.link retry_delivery
+        end
+        if(args.get(:authorization, :allowed_origins))
+          require 'ipaddr'
+          @allowed_origins = [args.get(:authorization, :allowed_origins)].flatten.compact.map do |origin_check|
+            IPAddr.new(origin_check)
+          end
+        end
+        if(args.get(:authorization, :htpasswd))
+          require 'htauth'
+          @auth_htpasswd = HTAuth::PasswdFile.open(
+            args.get(:authorization, :htpasswd)
+          )
         end
       end
 
@@ -78,6 +94,92 @@ module Carnivore
       # Always auto start
       def auto_process?
         true
+      end
+
+      # Message is authorized for processing
+      #
+      # @param message [Carnivore::Message]
+      # @return [TrueClass, FalseClass]
+      # @note Authorization is driven via the source configuration.
+      #   Valid structure looks like:
+      #     {
+      #       :type => 'http',
+      #       :args => {
+      #         :authorization => {
+      #           :allowed_origins => ['127.0.0.1', '192.168.0.2', '192.168.6.0/24'],
+      #           :htpasswd => '/path/to/htpasswd.file',
+      #           :credentials => {
+      #             :username1 => 'password1'
+      #           },
+      #           :valid_on => :all # or :any
+      #         }
+      #       }
+      #     }
+      #   When multiple authorization items are provided, the
+      #   `:valid_on` will define behavior. It will default to `:all`.
+      def authorized?(message)
+        if(args.fetch(:authorization))
+          valid_on = args.fetch(:authorization, :valid_on, :all).to_sym
+          case valid_on
+          when :all
+            allowed_origin?(message) &&
+              allowed_htpasswd?(message) &&
+              allowed_credentials?(message)
+          when :any
+            allowed_origin?(message) ||
+              allowed_htpasswd?(message) ||
+              allowed_credentials?(message)
+          when :none
+            true
+          else
+            raise ArgumentError.new "Unknown authorization `:valid_on` provided! Given: #{valid_on}. Allowed: `any` or `all`"
+          end
+        else
+          true
+        end
+      end
+
+      # Check if message is allowed based on htpasswd file
+      #
+      # @param message [Carnivore::Message]
+      # @return [TrueClass, FalseClass]
+      def allowed_htpasswd?(message)
+        if(auth_htpasswd)
+          entry = auth_htpasswd.fetch(message[:message][:authentication][:username])
+          if(entry)
+            entry.authenticated?(message[:message][:authentication][:password])
+          else
+            false
+          end
+        else
+          true
+        end
+      end
+
+      # Check if message is allowed based on config credentials
+      #
+      # @param message [Carnivore::Message]
+      # @return [TrueClass, FalseClass]
+      def allowed_credentials?(message)
+        if(creds = args.get(:authorization, :credentials))
+          creds[message[:message][:authentication][:username]] == message[:message][:authentication][:password]
+        else
+          true
+        end
+      end
+
+      # Check if message is allowed based on origin
+      #
+      # @param message [Carnivore::Message]
+      # @return [TrueClass, FalseClass]
+      def allowed_origin?(message)
+        if(auth_allowed_origins)
+          !!auth_allowed_origins.detect do |allowed_check|
+            allowed_check.include?(message[:message][:origin])
+          end
+        else
+          true
+        end
       end
 
       # Tranmit message. The transmission can be a response
@@ -197,12 +299,16 @@ module Carnivore
             con.each_request do |req|
               begin
                 msg = build_message(con, req)
-                callbacks.each do |name|
-                  c_name = callback_name(name)
-                  debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
-                  callback_supervisor[c_name].call(msg)
+                if(authorized?(msg))
+                  callbacks.each do |name|
+                    c_name = callback_name(name)
+                    debug "Dispatching #{msg} to callback<#{name} (#{c_name})>"
+                    callback_supervisor[c_name].call(msg)
+                  end
+                  req.respond(:ok, 'So long, and thanks for all the fish!') if args[:auto_respond]
+                else
+                  req.respond(:unauthorized, 'You are not authorized to perform requested action!')
                 end
-                req.respond(:ok, 'So long, and thanks for all the fish!') if args[:auto_respond]
               rescue => e
                 req.respond(:bad_request, "Failed to process request -> #{e}")
               end
@@ -233,7 +339,8 @@ module Carnivore
           ],
           :connection => con,
           :query => parse_query_string(req.query_string),
-          :origin => req.remote_addr
+          :origin => req.remote_addr,
+          :authentication => {}
         )
         if(msg[:headers][:content_type] == 'application/json')
           msg[:body] = MultiJson.load(
