@@ -232,7 +232,8 @@ module Carnivore
             req.headers.map{ |k,v| [k.downcase.tr('-', '_'), v]}
           ],
           :connection => con,
-          :query => parse_query_string(req.query_string)
+          :query => parse_query_string(req.query_string),
+          :origin => req.remote_addr
         )
         if(msg[:headers][:content_type] == 'application/json')
           msg[:body] = MultiJson.load(
@@ -253,6 +254,15 @@ module Carnivore
           msg[:body].rewind
         else
           msg[:body] = req.body.to_s
+        end
+        if(msg[:headers][:authorization])
+          user, pass = Base64.urlsafe_decode64(
+            msg[:headers][:authorization].split(' ').last
+          ).split(':', 2)
+          msg[:authentication] = {
+            :username => user,
+            :password => pass
+          }
         end
         format(msg)
       end
