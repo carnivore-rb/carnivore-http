@@ -1,3 +1,8 @@
+# V0.1.10
+* Add support for message re-delivery and local persistence
+* Add support for authorization
+* Add HTTPS support
+
 # v0.1.8
 * Add better message body handling
 * Update DSL inclusion on subclasses
