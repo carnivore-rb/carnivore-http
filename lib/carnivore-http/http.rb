@@ -291,11 +291,23 @@ module Carnivore
         message[:message][:request].respond(code, args[:response_body] || args)
       end
 
+      # Initialize http listener correctly based on configuration
+      #
+      # @param block [Proc] processing block
+      # @return [Reel::Server::HTTP, Reel::Server::HTTPS]
+      def build_listener(&block)
+        if(args[:ssl])
+          Reel::Server::HTTPS.supervise(args[:bind], args[:port], args[:ssl], &block)
+        else
+          Reel::Server::HTTP.supervise(args[:bind], args[:port], &block)
+        end
+      end
+
       # Process requests
       def process(*process_args)
         unless(@processing)
           @processing = true
-          srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
+          srv = build_listener do |con|
             con.each_request do |req|
               begin
                 msg = build_message(con, req)

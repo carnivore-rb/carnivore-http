@@ -85,7 +85,7 @@ module Carnivore
       def process(*process_args)
         unless(processing)
           @processing = true
-          srv = Reel::Server::HTTP.supervise(args[:bind], args[:port]) do |con|
+          srv = build_listener do |con|
             con.each_request do |req|
               begin
                 msg = build_message(con, req)
