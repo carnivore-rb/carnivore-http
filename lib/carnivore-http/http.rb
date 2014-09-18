@@ -297,7 +297,13 @@ module Carnivore
       # @return [Reel::Server::HTTP, Reel::Server::HTTPS]
       def build_listener(&block)
         if(args[:ssl])
-          Reel::Server::HTTPS.supervise(args[:bind], args[:port], args[:ssl], &block)
+          ssl_config = Smash.new(args[:ssl][key].dup)
+          [:key, :cert].each do |key|
+            if(ssl_config[key])
+              ssl_config[key] = File.open(ssl_config.delete(key))
+            end
+          end
+          Reel::Server::HTTPS.supervise(args[:bind], args[:port], ssl_config, &block)
         else
           Reel::Server::HTTP.supervise(args[:bind], args[:port], &block)
         end
