@@ -24,13 +24,13 @@ module Carnivore
       #
       # @return [TrueClass, FalseClass] attempt was made
       # @note will not attempt if attempt is currently in progress
-      def attempt_redelivery
+      def attempt_redelivery(message_id = '*')
         attempt = false
         begin
           unless(@delivering)
             @delivering = true
             attempt = true
-            Dir.glob(File.join(message_directory, '*.json')).each do |file|
+            Dir.glob(File.join(message_directory, "#{message_id}.json")).each do |file|
               debug "Redelivery processing: #{file}"
               begin
                 args = MultiJson.load(File.read(file)).to_smash
