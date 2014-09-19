@@ -243,6 +243,8 @@ module Carnivore
           if(result.code < 200 || result.code > 299)
             error "Invalid response code received for #{message}: #{result.code} - #{result.reason}"
             write_for_retry(message.object_id, payload, method, url, headers)
+          else
+            info "Message delivery was successful #{message}"
           end
         rescue => e
           error "Transmission failure (#{message}) - #{e.class}: #{e}"
