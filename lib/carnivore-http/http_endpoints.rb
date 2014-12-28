@@ -91,7 +91,7 @@ module Carnivore
                 msg = build_message(con, req)
                 if(authorized?(msg))
                   unless(@points.deliver(msg))
-                    warn "No match found for request: #{msg}"
+                    warn "No match found for request: #{msg} (path: #{msg[:message][:request].url})"
                     debug "Unmatched message (#{msg}): #{msg.inspect}"
                     req.respond(:not_found, 'So long, and thanks for all the fish!')
                   end
