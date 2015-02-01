@@ -89,6 +89,7 @@ module Carnivore
             con.each_request do |req|
               begin
                 msg = build_message(con, req)
+                msg = format(msg)
                 if(authorized?(msg))
                   unless(@points.deliver(msg))
                     warn "No match found for request: #{msg} (path: #{msg[:message][:request].url})"
