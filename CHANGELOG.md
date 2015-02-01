@@ -1,7 +1,8 @@
-# V0.1.10
+# V0.2.0
 * Add support for message re-delivery and local persistence
 * Add support for authorization
 * Add HTTPS support
+* Add `:http_path` source
 
 # v0.1.8
 * Add better message body handling
