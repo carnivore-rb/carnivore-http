@@ -6,6 +6,8 @@ Provides HTTP `Carnivore::Source`
 
 ## HTTP
 
+All requests are processed via single source
+
 ```ruby
 require 'carnivore'
 require 'carnivore-http'
@@ -22,6 +24,8 @@ end
 
 ## HTTP with configured end points
 
+All point builder definitions are hooked into source:
+
 ```ruby
 require 'carnivore'
 require 'carnivore-http'
@@ -34,6 +38,27 @@ Carnivore.configure do
     }
   )
 end.start!
+```
+
+## HTTP paths
+
+Multiple sources share same listener, and incoming messages
+are matched based on HTTP method + path
+
+```ruby
+require 'carnivore'
+require 'carnivore-http'
+
+Carnivore.configure do
+  source = Carnivore::Source.build(
+    :type => :http_paths,
+    :args => {
+      :port => 8080,
+      :path => '/test',
+      :method => 'get'
+    }
+  )
+end
 ```
 
 ## Available options for `:args`
