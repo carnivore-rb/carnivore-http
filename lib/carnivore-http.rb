@@ -11,6 +11,8 @@ module Carnivore
 
   class Source
     autoload :Http, 'carnivore-http/http'
+    autoload :HttpSource, 'carnivore-http/http_source'
+    autoload :HttpPaths, 'carnivore-http/http_paths'
     autoload :HttpEndpoints, 'carnivore-http/http_endpoints'
   end
 
@@ -21,4 +23,5 @@ module Carnivore
 end
 
 Carnivore::Source.provide(:http, 'carnivore-http/http')
+Carnivore::Source.provide(:http_paths, 'carnivore-http/http_paths')
 Carnivore::Source.provide(:http_endpoints, 'carnivore-http/http_endpoints')
