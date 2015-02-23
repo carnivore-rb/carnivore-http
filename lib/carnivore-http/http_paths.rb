@@ -66,7 +66,15 @@ module Carnivore
             con.each_request do |req|
               begin
                 msg = build_message(con, req)
-                msg_queue = message_queues["#{req.path}-#{req.method.to_s.downcase}"]
+                # Start with static path lookup since it's the
+                # cheapest, then fallback to iterative globbing
+                unless(msg_queue = message_queues["#{req.path}-#{req.method.to_s.downcase}"])
+                  msq_queue = message_queues.map do |k,v|
+                    path_glob, http_method = k.split('-')
+                    v if req.method.to_s.downcase == http_method &&
+                      File.fnmatch(path_glob, req.path))
+                  end.compact.first
+                end
                 if(msg_queue)
                   if(authorized?(msg))
                     msg_queue << msg
