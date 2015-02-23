@@ -7,6 +7,11 @@ module Carnivore
     # Carnivore HTTP paths
     class HttpPaths < HttpSource
 
+      # Default max wait time for message response
+      DEFAULT_RESPONSE_TIMEOUT = 10
+      # Default response wait time stepping
+      DEFAULT_RESPONSE_WAIT_STEP = 0.1
+
       finalizer :halt_listener
       include Bogo::Memoization
 
@@ -32,9 +37,14 @@ module Carnivore
         if(message_queues[queue_key])
           raise ArgumentError.new "Conflicting HTTP path source provided! path: #{http_path} method: #{http_method}"
         else
-          message_queues[queue_key] = Queue.new
+          message_queues[queue_key] = Smash.new(
+            :queue => Queue.new
+          )
         end
         super
+        message_queues[queue_key].merge!(
+          Smash.new(:config => args.to_smash)
+        )
       end
 
       # Setup the HTTP listener source
@@ -68,17 +78,33 @@ module Carnivore
                 msg = build_message(con, req)
                 # Start with static path lookup since it's the
                 # cheapest, then fallback to iterative globbing
+                msg_queue = nil
                 unless(msg_queue = message_queues["#{req.path}-#{req.method.to_s.downcase}"])
-                  msq_queue = message_queues.map do |k,v|
+                  message_queues.each do |k,v|
                     path_glob, http_method = k.split('-')
-                    v if req.method.to_s.downcase == http_method &&
-                      File.fnmatch(path_glob, req.path))
-                  end.compact.first
+                    if(req.method.to_s.downcase == http_method && File.fnmatch(path_glob, req.path))
+                      msg_queue = v
+                    end
+                  end
                 end
                 if(msg_queue)
                   if(authorized?(msg))
-                    msg_queue << msg
-                    req.respond(:ok, 'So long and thanks for all the fish!')
+                    msg_queue[:queue] << msg
+                    if(msg_queue[:config][:auto_respond])
+                      code = msg_queue[:config].fetch(:response, :code, 'ok').to_sym
+                      response = msg_queue[:config].fetch(:response, :message, 'So long and thanks for all the fish!')
+                      req.respond(code, response)
+                    else
+                      wait_time = msg_queue[:config].fetch(:response_timeout, DEFAULT_RESPONSE_TIMEOUT).to_f
+                      wait_step = msg_queue[:config].fetch(:response_wait_step, DEFAULT_RESPONSE_WAIT_STEP).to_f
+                      while(con.response_state == :headers && wait_time > 0)
+                        sleep(wait_step)
+                        wait_time -= wait_step
+                      end
+                      if(con.response_state == :headers)
+                        raise "Timeout has been exceeded waiting for response! (#{msg})"
+                      end
+                    end
                   else
                     req.respond(:unauthorized, 'You are not authorized to perform requested action!')
                   end
@@ -97,7 +123,7 @@ module Carnivore
       def receive(*_)
         val = nil
         until(val)
-          val = Celluloid::Future.new{ message_queue.pop }.value
+          val = Celluloid::Future.new{ message_queue[:queue].pop }.value
         end
         val
       end
