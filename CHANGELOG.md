@@ -1,4 +1,8 @@
-# V0.2.0
+# v0.2.2
+* Add glob support to `:http_path` source
+* Allow disabling automatic response on `:http_path`
+
+# v0.2.0
 * Add support for message re-delivery and local persistence
 * Add support for authorization
 * Add HTTPS support
