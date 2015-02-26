@@ -273,10 +273,14 @@ module Carnivore
       # @param args [Hash]
       # @option args [Symbol] :code return code
       def confirm(message, args={})
-        code = args.delete(:code) || :ok
-        args[:response_body] = 'Thanks' if code == :ok && args.empty?
-        debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect}"
-        message[:message][:request].respond(code, args[:response_body] || args)
+        if(message[:message][:connection].response_state != :headers)
+          code = args.delete(:code) || :ok
+          args[:response_body] = 'Thanks' if code == :ok && args.empty?
+          debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect}"
+          message[:message][:request].respond(code, args[:response_body] || args)
+        else
+          warn "Message was already confimed. Confirmation not sent! (#{message})"
+        end
       end
 
       # Initialize http listener correctly based on configuration
