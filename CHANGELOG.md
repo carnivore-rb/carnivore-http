@@ -1,3 +1,6 @@
+# v0.2.4
+* Add fix for memoization issues on init
+
 # v0.2.2
 * Add glob support to `:http_path` source
 * Allow disabling automatic response on `:http_path`
