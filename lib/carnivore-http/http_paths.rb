@@ -34,6 +34,7 @@ module Carnivore
       def setup(*_)
         @http_path = args.fetch(:path, '/')
         @http_method = args.fetch(:method, 'get').to_s.downcase.to_sym
+        super
         if(message_queues[queue_key])
           raise ArgumentError.new "Conflicting HTTP path source provided! path: #{http_path} method: #{http_method}"
         else
@@ -41,7 +42,6 @@ module Carnivore
             :queue => Queue.new
           )
         end
-        super
         message_queues[queue_key].merge!(
           Smash.new(:config => args.to_smash)
         )
