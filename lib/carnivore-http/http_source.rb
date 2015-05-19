@@ -94,7 +94,7 @@ module Carnivore
 
       # Always auto start
       def auto_process?
-        true
+        args.has_key?(:enable_processing) ? args[:enable_processing] : true
       end
 
       # Message is authorized for processing
@@ -352,7 +352,14 @@ module Carnivore
             :password => pass
           }
         end
-        msg
+        if(msg[:body].is_a?(Hash) && msg[:body][:id])
+          Smash.new(
+            :raw => msg,
+            :content => msg[:body].to_smash
+          )
+        else
+          msg
+        end
       end
 
     end
