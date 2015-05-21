@@ -1,3 +1,8 @@
+# v0.2.6
+* Add support to disable listen
+* Attempt delivery prior to payload persist
+* Load payload if possible and deliver via :json
+
 # v0.2.4
 * Add fix for memoization issues on init
 
