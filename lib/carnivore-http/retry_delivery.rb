@@ -68,7 +68,16 @@ module Carnivore
           if(uri.userinfo)
             base = base.basic_auth(:user => uri.user, :pass => uri.password)
           end
-          result = base.send(method, url, :body => payload)
+          if(payload.is_a?(String))
+            begin
+              payload = MultiJson.load(payload)
+            rescue MultiJson::ParseError
+              # ignore
+            end
+          end
+          result = base.send(method, url,
+            payload.is_a?(Hash) ? :json : :body => payload
+          )
           if(result.code < 200 || result.code > 299)
             error "Invalid response code received for #{message_id}: #{result.code} - #{result.reason}"
             false
