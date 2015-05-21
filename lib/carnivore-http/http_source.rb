@@ -234,8 +234,10 @@ module Carnivore
       # @param headers [Hash] request headers
       # @return [NilClass]
       def perform_transmission(message_id, payload, method, url, headers={})
-        write_for_retry(message_id, payload, method, url, headers)
-        retry_delivery.async.attempt_redelivery(message_id)
+        unless(retry_delivery.redeliver(message_id, payload, method, url, headers))
+          write_for_retry(message_id, payload, method, url, headers)
+          retry_delivery.async.attempt_redelivery(message_id)
+        end
         nil
       end
 
