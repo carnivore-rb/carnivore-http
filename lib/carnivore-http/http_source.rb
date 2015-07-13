@@ -278,8 +278,9 @@ module Carnivore
         unless(message[:message][:confirmed])
           code = args.delete(:code) || :ok
           args[:response_body] = 'Thanks' if code == :ok && args.empty?
-          debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect}"
-          message[:message][:request].respond(code, args[:response_body] || args)
+          body = args.delete(:response_body)
+          debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect} Body: #{body}"
+          message[:message][:request].respond(code, *(args.empty? ? [body] : [args, body]))
         else
           message[:message][:confirmed] = true
           warn "Message was already confimed. Confirmation not sent! (#{message})"
