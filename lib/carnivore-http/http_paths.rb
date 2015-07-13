@@ -97,7 +97,7 @@ module Carnivore
                     else
                       wait_time = msg_queue[:config].fetch(:response_timeout, DEFAULT_RESPONSE_TIMEOUT).to_f
                       wait_step = msg_queue[:config].fetch(:response_wait_step, DEFAULT_RESPONSE_WAIT_STEP).to_f
-                      while(con.response_state == :headers && wait_time > 0)
+                      while(!con.socket.closed? && wait_time > 0)
                         sleep(wait_step)
                         wait_time -= wait_step
                       end
