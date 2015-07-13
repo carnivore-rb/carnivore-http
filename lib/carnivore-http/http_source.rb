@@ -281,8 +281,9 @@ module Carnivore
           body = args.delete(:response_body)
           debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect} Body: #{body}"
           message[:message][:request].respond(code, *(args.empty? ? [body] : [args, body]))
-        else
+          message[:message][:connection].close
           message[:message][:confirmed] = true
+        else
           warn "Message was already confimed. Confirmation not sent! (#{message})"
         end
       end
