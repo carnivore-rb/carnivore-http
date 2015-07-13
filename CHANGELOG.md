@@ -1,3 +1,9 @@
+# v0.2.8
+* Set confirmed state directly into message
+* Support body on non-200 type responses
+* Wait on socket status instead of request status
+* Always close connection after confirmation
+
 # v0.2.6
 * Add support to disable listen
 * Attempt delivery prior to payload persist
