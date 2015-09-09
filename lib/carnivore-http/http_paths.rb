@@ -12,7 +12,6 @@ module Carnivore
       # Default response wait time stepping
       DEFAULT_RESPONSE_WAIT_STEP = 0.1
 
-      finalizer :halt_listener
       include Bogo::Memoization
 
       # @return [String] end point path
@@ -21,10 +20,10 @@ module Carnivore
       attr_reader :http_method
 
       # Kill listener on shutdown
-      def halt_listener
+      def terminate
         listener = memoize("#{args[:bind]}-#{args[:port]}", :global){ nil }
-        if(listener && listener.alive?)
-          listener.terminate
+        if(listener && listener.running)
+          listener.stop(:sync)
         end
         unmemoize("#{args[:bind]}-#{args[:port]}", :global)
         unmemoize("#{args[:bind]}-#{args[:port]}-queues", :global)
@@ -72,48 +71,37 @@ module Carnivore
       # Start the HTTP(S) listener
       def start_listener!
         memoize("#{args[:bind]}-#{args[:port]}", :global) do
-          build_listener do |con|
-            con.each_request do |req|
-              begin
-                msg = build_message(con, req)
-                # Start with static path lookup since it's the
-                # cheapest, then fallback to iterative globbing
-                msg_queue = nil
-                unless(msg_queue = message_queues["#{req.path}-#{req.method.to_s.downcase}"])
-                  message_queues.each do |k,v|
-                    path_glob, http_method = k.split('-')
-                    if(req.method.to_s.downcase == http_method && File.fnmatch(path_glob, req.path))
-                      msg_queue = v
-                    end
+          build_listener do |req|
+            begin
+              msg = build_message(req)
+              # Start with static path lookup since it's the
+              # cheapest, then fallback to iterative globbing
+              msg_queue = nil
+              unless(msg_queue = message_queues["#{req.path}-#{req.method.to_s.downcase}"])
+                message_queues.each do |k,v|
+                  path_glob, http_method = k.split('-')
+                  if(req.method.to_s.downcase == http_method && File.fnmatch(path_glob, req.path))
+                    msg_queue = v
                   end
                 end
-                if(msg_queue)
-                  if(authorized?(msg))
-                    msg_queue[:queue] << msg
-                    if(msg_queue[:config][:auto_respond])
-                      code = msg_queue[:config].fetch(:response, :code, 'ok').to_sym
-                      response = msg_queue[:config].fetch(:response, :message, 'So long and thanks for all the fish!')
-                      req.respond(code, response)
-                    else
-                      wait_time = msg_queue[:config].fetch(:response_timeout, DEFAULT_RESPONSE_TIMEOUT).to_f
-                      wait_step = msg_queue[:config].fetch(:response_wait_step, DEFAULT_RESPONSE_WAIT_STEP).to_f
-                      while(!con.socket.closed? && wait_time > 0)
-                        sleep(wait_step)
-                        wait_time -= wait_step
-                      end
-                      if(con.response_state == :headers)
-                        raise "Timeout has been exceeded waiting for response! (#{msg})"
-                      end
-                    end
-                  else
-                    req.respond(:unauthorized, 'You are not authorized to perform requested action!')
+              end
+              if(msg_queue)
+                if(authorized?(msg))
+                  msg_queue[:queue] << msg
+                  if(msg_queue[:config][:auto_respond])
+                    code = msg_queue[:config].fetch(:response, :code, 'ok').to_sym
+                    response = msg_queue[:config].fetch(:response, :message, 'So long and thanks for all the fish!')
+                    req.respond(code, response)
                   end
                 else
-                  req.respond(:not_found, 'Requested path not found!')
+                  req.respond(:unauthorized, 'You are not authorized to perform requested action!')
                 end
-              rescue => e
-                req.respond(:bad_request, "Failed to process request -> #{e}")
+              else
+                req.respond(:not_found, 'Requested path not found!')
               end
+            rescue => e
+              req.respond(:bad_request, "Failed to process request -> #{e}")
+              puts "#{e}\n#{e.backtrace.join("\n")}"
             end
           end
         end
@@ -123,8 +111,9 @@ module Carnivore
       def receive(*_)
         val = nil
         until(val)
-          val = Celluloid::Future.new{ message_queue[:queue].pop }.value
+          val = defer{ message_queue[:queue].pop }
         end
+        info "PROCESSING MSG: #{val}"
         val
       end
 

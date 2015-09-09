@@ -1,4 +1,4 @@
-require 'reel'
+require 'puma'
 require 'tempfile'
 require 'carnivore/source'
 require 'carnivore-http/utils'
@@ -9,14 +9,10 @@ module Carnivore
     # Carnivore HTTP source
     class HttpSource < Source
 
-      trap_exit :retry_delivery_failure
-
       include Carnivore::Http::Utils::Params
 
       # @return [Hash] source arguments
       attr_reader :args
-      # @return [Carnivore::Http::RetryDelivery]
-      attr_reader :retry_delivery
       # @return [Array<IPAddr>] allowed request origin addresses
       attr_reader :auth_allowed_origins
       # @return [HTAuth::PasswdFile]
@@ -28,8 +24,13 @@ module Carnivore
       def setup(args={})
         require 'fileutils'
         @args = default_args(args)
-        @retry_delivery = Carnivore::Http::RetryDelivery.new(retry_directory)
-        self.link retry_delivery
+        unless(retry_delivery)
+          Carnivore::Supervisor.supervisor.supervise_as(
+            :http_retry_delivery,
+            Carnivore::Http::RetryDelivery,
+            retry_directory
+          )
+        end
         if(args.get(:authorization, :allowed_origins))
           require 'ipaddr'
           @allowed_origins = [args.get(:authorization, :allowed_origins)].flatten.compact.map do |origin_check|
@@ -42,25 +43,12 @@ module Carnivore
             args.get(:authorization, :htpasswd)
           )
         end
+        @listeners = []
       end
 
-      # Handle failed retry deliveries
-      #
-      # @param actor [Object] terminated actor
-      # @param reason [Exception] reason for termination
-      # @return [NilClass]
-      def retry_delivery_failure(actor, reason)
-        if(actor == retry_delivery)
-          if(reason)
-            error "Failed RetryDelivery encountered: #{reason}. Rebuilding."
-            @retry_delivery = Carnivore::Http::RetryDelivery.new(retry_directory)
-          else
-            info 'Encountered RetryDelivery failure. No reason so assuming teardown.'
-          end
-        else
-          error "Unknown actor failure encountered: #{reason}"
-        end
-        nil
+      # @return [RetryDelivery]
+      def retry_delivery
+        Carnivore::Supervisor.supervisor[:http_retry_delivery]
       end
 
       # @return [String, NilClass] directory storing failed messages
@@ -218,7 +206,7 @@ module Carnivore
           method = options.fetch(:method,
             args.fetch(:method, :post)
           ).to_s.downcase.to_sym
-          message_id = message.is_a?(Hash) ? message.fetch(:id, Celluloid.uuid) : Celluloid.uuid
+          message_id = message.is_a?(Hash) ? message.fetch(:id, Carnivore.uuid) : Carnivore.uuid
           payload = message.is_a?(String) ? message : MultiJson.dump(message)
           info "Transmit request type for Message ID: #{message_id}"
           async.perform_transmission(message_id.to_s, payload, method, url, options.fetch(:headers, {}))
@@ -280,8 +268,7 @@ module Carnivore
           args[:response_body] = 'Thanks' if code == :ok && args.empty?
           body = args.delete(:response_body)
           debug "Confirming #{message} with: Code: #{code.inspect} Args: #{args.inspect} Body: #{body}"
-          message[:message][:request].respond(code, *(args.empty? ? [body] : [args, body]))
-          message[:message][:connection].close
+          message[:message][:request].respond(code, *(args.empty? ? [body] : [args.merge(:body => body)]))
           message[:message][:confirmed] = true
         else
           warn "Message was already confimed. Confirmation not sent! (#{message})"
@@ -293,16 +280,27 @@ module Carnivore
       # @param block [Proc] processing block
       # @return [Reel::Server::HTTP, Reel::Server::HTTPS]
       def build_listener(&block)
+        app = Carnivore::Http::App.new(&block)
+        options = {:bind => []}
         if(args[:ssl])
-          ssl_config = Smash.new(args[:ssl][key].dup)
-          [:key, :cert].each do |key|
-            if(ssl_config[key])
-              ssl_config[key] = File.open(ssl_config.delete(key))
-            end
-          end
-          Reel::Server::HTTPS.supervise(args[:bind], args[:port], ssl_config, &block)
+          ssl_config = Smash.new(args[:ssl])
+          options[:bind] << "ssl://#{args[:bind]}:#{args[:port]}?cert=#{ssl_config[:cert]}&key=#{ssl_config[:key]}"
         else
-          Reel::Server::HTTP.supervise(args[:bind], args[:port], &block)
+          options[:bind] << "tcp://#{args[:bind]}:#{args[:port]}"
+        end
+        srv = Puma::Server.new(app, Puma::Events.stdio, options)
+        @listeners.push(srv)
+        srv.binder.parse(options[:bind], Puma::Events.stdio)
+        srv.run
+        srv
+      end
+
+      def terminate
+        if(@listeners)
+          @listeners.each do |l|
+            l.stop(:sync)
+          end
+          @listeners.clear
         end
       end
 
@@ -311,30 +309,28 @@ module Carnivore
 
       # Build message hash from request
       #
-      # @param con [Reel::Connection]
-      # @param req [Reel::Request]
+      # @param req [Carnivore::Http::App::Request]
       # @return [Hash]
       # @note
       #   if body size is greater than BODY_TO_FILE_SIZE
       #   the body will be a temp file instead of a string
-      def build_message(con, req)
+      def build_message(req)
         msg = Smash.new(
           :request => req,
           :headers => Smash[
             req.headers.map{ |k,v| [k.downcase.tr('-', '_'), v]}
           ],
-          :connection => con,
           :query => parse_query_string(req.query_string),
           :origin => req.remote_addr,
           :authentication => {}
         )
         if(msg[:headers][:content_type] == 'application/json')
           msg[:body] = MultiJson.load(
-            req.body.to_s
+            req.body.read
           )
         elsif(msg[:headers][:content_type] == 'application/x-www-form-urlencoded')
           msg[:body] = parse_query_string(
-            req.body.to_s
+            req.body.read
           )
           if(msg[:body].size == 1 && msg[:body].values.first.is_a?(Array) && msg[:body].values.first.empty?)
             msg[:body] = msg[:body].keys.first
@@ -346,7 +342,7 @@ module Carnivore
           end
           msg[:body].rewind
         else
-          msg[:body] = req.body.to_s
+          msg[:body] = req.body.read
         end
         if(msg[:headers][:authorization])
           user, pass = Base64.urlsafe_decode64(

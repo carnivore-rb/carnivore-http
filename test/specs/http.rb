@@ -1,17 +1,19 @@
 require 'http'
 require 'minitest/autorun'
 require 'carnivore-http'
+require 'pry'
 
 describe 'Carnivore::Source::Http' do
 
   before do
     MessageStore.init
+    @port = $carnivore_ports.pop
     Carnivore::Source.build(
       :type => :http,
       :args => {
         :name => :http_source,
         :bind => '127.0.0.1',
-        :port => '8705'
+        :port => @port
       }
     ).add_callback(:store) do |message|
       MessageStore.messages.push(message[:message][:body])
@@ -22,7 +24,8 @@ describe 'Carnivore::Source::Http' do
   end
 
   after do
-    @runner.terminate
+    Carnivore::Supervisor.supervisor.registry.values.map(&:terminate)
+    Carnivore::Supervisor.supervisor.registry.clear
   end
 
   describe 'HTTP source based communication' do
@@ -55,7 +58,7 @@ describe 'Carnivore::Source::Http' do
       end
 
       it 'should accept http requests' do
-        HTTP.get('http://127.0.0.1:8705/')
+        HTTP.get("http://127.0.0.1:#{@port}/")
         source_wait(2) do
           !MessageStore.messages.empty?
         end

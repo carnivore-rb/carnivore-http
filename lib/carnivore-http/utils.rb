@@ -24,11 +24,19 @@ module Carnivore
         # @return [Hash]
         def parse_query_string(string)
           unless(string.to_s.empty?)
-            args = CGI.parse(string)
+            args = Rack::Utils.parse_nested_query(string)
             format_query_args(args)
           else
-            {}
+            Smash.new
           end
+        end
+
+        # Generate query string
+        #
+        # @param hash [Hash] request parameters
+        # @return [String]
+        def dump_query_string(hash)
+          Rack::Utils.build_nested_query(hash)
         end
 
         # Cast hash values when possible

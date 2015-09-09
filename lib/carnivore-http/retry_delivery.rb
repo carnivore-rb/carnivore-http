@@ -5,7 +5,8 @@ module Carnivore
 
     class RetryDelivery
 
-      include Celluloid
+      include Zoidberg::SoftShell
+      include Zoidberg::Supervise
       include Carnivore::Utils::Logging
 
       # @return [String] message directory
