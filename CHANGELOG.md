@@ -1,3 +1,7 @@
+# v0.3.0
+* Updates for carnivore 1.0
+* Remove reel and replace with puma
+
 # v0.2.8
 * Set confirmed state directly into message
 * Support body on non-200 type responses
