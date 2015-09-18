@@ -85,25 +85,23 @@ module Carnivore
       def process(*process_args)
         unless(processing)
           @processing = true
-          srv = build_listener do |con|
-            con.each_request do |req|
-              begin
-                msg = build_message(con, req)
-                msg = format(msg)
-                if(authorized?(msg))
-                  unless(@points.deliver(msg))
-                    warn "No match found for request: #{msg} (path: #{msg[:message][:request].url})"
-                    debug "Unmatched message (#{msg}): #{msg.inspect}"
-                    req.respond(:not_found, 'So long, and thanks for all the fish!')
-                  end
-                else
-                  req.respond(:unauthorized, 'You are not authorized to perform requested action!')
+          srv = build_listener do |req|
+            begin
+              msg = build_message(req)
+              msg = format(msg)
+              if(authorized?(msg))
+                unless(@points.deliver(msg))
+                  warn "No match found for request: #{msg} (path: #{msg[:message][:request].url})"
+                  debug "Unmatched message (#{msg}): #{msg.inspect}"
+                  req.respond(:not_found, 'So long, and thanks for all the fish!')
                 end
-              rescue => e
-                error "Failed to process message: #{e.class} - #{e}"
-                debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
-                req.respond(:bad_request, 'Failed to process request')
+              else
+                req.respond(:unauthorized, 'You are not authorized to perform requested action!')
               end
+            rescue => e
+              error "Failed to process message: #{e.class} - #{e}"
+              debug "#{e.class}: #{e}\n#{e.backtrace.join("\n")}"
+              req.respond(:bad_request, 'Failed to process request')
             end
           end
           true

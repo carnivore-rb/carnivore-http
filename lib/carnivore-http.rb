@@ -5,6 +5,7 @@ require 'multi_json'
 module Carnivore
   # HTTP namespace
   module Http
+    autoload :App, 'carnivore-http/app'
     autoload :PointBuilder, 'carnivore-http/point_builder'
     autoload :RetryDelivery, 'carnivore-http/retry_delivery'
   end

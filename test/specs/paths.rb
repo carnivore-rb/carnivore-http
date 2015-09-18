@@ -3,12 +3,14 @@ require 'minitest/autorun'
 require 'carnivore-http'
 
 
+
 describe 'Carnivore::Source::Http' do
 
   before do
     MessageStore.init
 
     unless(@runner)
+      @port = $carnivore_ports.pop
       Carnivore::Source.build(
         :type => :http_paths,
         :args => {
@@ -16,7 +18,7 @@ describe 'Carnivore::Source::Http' do
           :path => '/fubar',
           :method => :post,
           :bind => '127.0.0.1',
-          :port => '8706',
+          :port => @port,
           :auto_respond => false
         }
       ).add_callback(:store) do |message|
@@ -30,7 +32,7 @@ describe 'Carnivore::Source::Http' do
           :path => '/ohai',
           :method => :get,
           :bind => '127.0.0.1',
-          :port => '8706'
+          :port => @port
         }
       ).add_callback(:store) do |message|
         MessageStore.messages.push(message[:message][:body])
@@ -42,7 +44,7 @@ describe 'Carnivore::Source::Http' do
           :path => '/glob/v*/*',
           :method => :get,
           :bind => '127.0.0.1',
-          :port => '8706'
+          :port => @port
         }
       ).add_callback(:store) do |message|
         MessageStore.messages.push(message[:message][:body])
@@ -53,7 +55,8 @@ describe 'Carnivore::Source::Http' do
   end
 
   after do
-    @runner.terminate
+    Carnivore::Supervisor.supervisor.registry.values.map(&:terminate)
+    Carnivore::Supervisor.supervisor.registry.clear
   end
 
   describe 'HTTP source based communication' do
@@ -98,21 +101,21 @@ describe 'Carnivore::Source::Http' do
     describe 'HTTP message transmissions' do
 
       it 'should receive messages and provide custom response' do
-        response = HTTP.post('http://127.0.0.1:8706/fubar', :body => 'test')
+        response = HTTP.post("http://127.0.0.1:#{@port}/fubar", :body => 'test')
         response.body.to_s.must_equal 'custom response'
         source_wait{ !MessageStore.messages.empty? }
         MessageStore.messages.pop.must_equal 'test'
       end
 
       it 'should receive messages and provide default response' do
-        response = HTTP.get('http://127.0.0.1:8706/ohai')
+        response = HTTP.get("http://127.0.0.1:#{@port}/ohai")
         source_wait{ !MessageStore.messages.empty? }
         response.body.to_s.must_equal 'So long and thanks for all the fish!'
         MessageStore.messages.pop.must_be :empty?
       end
 
       it 'should receive messages via glob matching' do
-        response = HTTP.get('http://127.0.0.1:8706/glob/v2/things')
+        response = HTTP.get("http://127.0.0.1:#{@port}/glob/v2/things")
         source_wait{ !MessageStore.messages.empty? }
         response.body.to_s.must_equal 'So long and thanks for all the fish!'
         MessageStore.messages.pop.must_be :empty?

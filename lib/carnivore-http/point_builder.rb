@@ -1,7 +1,6 @@
 require 'blockenspiel'
 require 'singleton'
 require 'carnivore/utils'
-require 'celluloid'
 
 module Carnivore
   module Http
@@ -12,7 +11,8 @@ module Carnivore
       # End point
       class Endpoint
 
-        include Celluloid
+        include Zoidberg::SoftShell
+        include Zoidberg::Supervise
         include Carnivore::Utils::Params
         include Carnivore::Utils::Logging
 
@@ -58,7 +58,7 @@ module Carnivore
       end
 
       include Carnivore::Utils::Params
-      include Celluloid::Logger
+      include Carnivore::Utils::Logging
       include Blockenspiel::DSL
 
       # @return [Hash] static path endpoints
@@ -232,7 +232,7 @@ module Carnivore
         #
         # @yield new API block
         def define(&block)
-          store(Celluloid.uuid, block)
+          store(Zoidberg.uuid, block)
         end
 
         # Store block
