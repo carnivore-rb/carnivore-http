@@ -113,7 +113,6 @@ module Carnivore
         until(val)
           val = defer{ message_queue[:queue].pop }
         end
-        info "PROCESSING MSG: #{val}"
         val
       end
 
