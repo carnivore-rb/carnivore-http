@@ -1,3 +1,7 @@
+# v0.3.2
+* Fix the retry delivery timer setup
+* Properly call parent class on termination
+
 # v0.3.0
 * Updates for carnivore 1.0
 * Remove reel and replace with puma
