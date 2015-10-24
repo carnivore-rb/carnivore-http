@@ -18,7 +18,7 @@ module Carnivore
       # @return [self]
       def initialize(directory)
         @message_directory = directory
-        every(60){ attempt_redelivery }
+        Thread.new{ every(60){ attempt_redelivery } }
       end
 
       # Attempt to deliver messages found in message directory
