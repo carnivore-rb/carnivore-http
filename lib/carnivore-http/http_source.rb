@@ -296,6 +296,7 @@ module Carnivore
       end
 
       def terminate
+        super
         if(@listeners)
           @listeners.each do |l|
             l.stop(:sync)

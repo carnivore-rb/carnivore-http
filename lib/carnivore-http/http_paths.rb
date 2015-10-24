@@ -21,6 +21,7 @@ module Carnivore
 
       # Kill listener on shutdown
       def terminate
+        super
         listener = memoize("#{args[:bind]}-#{args[:port]}", :global){ nil }
         if(listener && listener.running)
           listener.stop(:sync)
@@ -99,6 +100,8 @@ module Carnivore
               else
                 req.respond(:not_found, 'Requested path not found!')
               end
+            rescue Zoidberg::DeadException
+              raise
             rescue => e
               req.respond(:bad_request, "Failed to process request -> #{e}")
               puts "#{e}\n#{e.backtrace.join("\n")}"
