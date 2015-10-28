@@ -117,12 +117,19 @@ module Carnivore
       # Customized request
       class Request < Rack::Request
 
-        include Zoidberg::SoftShell
-
-        option :cache_signals
-
         # @return [Response]
         attr_reader :response_value
+        # @return [Mutex]
+        attr_reader :locker
+        # @return [ConditionVariable]
+        attr_reader :responder
+
+        # Override to setup synchronization support
+        def initialize(*_)
+          super
+          @locker = Mutex.new
+          @responder = ConditionVariable.new
+        end
 
         # Respond to the request
         #
@@ -131,7 +138,8 @@ module Carnivore
         # @return [TrueClass, FalseClass]
         def respond(code, string_or_args='')
           unless(@response_value)
-            signal(:response, Response.new(code, string_or_args))
+            @response_value = Response.new(code, string_or_args)
+            locker.synchronize{ responder.signal }
           else
             raise 'Response was already set!'
           end
@@ -145,7 +153,7 @@ module Carnivore
           unless(@response_value)
             begin
               Timeout.timeout(timeout) do
-                @response_value = wait_for(:response)
+                locker.synchronize{ responder.wait(locker) }
               end
             rescue Timeout::Error
               @response_value = Response.new(:internal_server_error, 'Timeout waiting for response')
