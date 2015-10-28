@@ -1,3 +1,6 @@
+# v0.3.4
+* Use simple condition variable for response set signal
+
 # v0.3.2
 * Fix the retry delivery timer setup
 * Properly call parent class on termination
