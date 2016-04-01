@@ -1,3 +1,6 @@
+# v0.3.6
+* Relax version constraint on blockenspiel library
+
 # v0.3.4
 * Use simple condition variable for response set signal
 
